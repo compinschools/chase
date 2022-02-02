@@ -39,7 +39,7 @@ var airsupport = -1;
 }
 
 onNet('onServerResourceStart',(resource)=> {
-  console.log("resource started: ",resource);
+ // console.log("resource started: ",resource);
   if(resource=="chase")
   {
     containers = JSON.parse( LoadResourceFile(GetCurrentResourceName(), "containerData.json"))
@@ -54,7 +54,7 @@ onNet('onServerResourceStart',(resource)=> {
 
 onNet('chase:sethuntercar',(localHunterCar) => {
   hunterCar = localHunterCar;
-  console.log("hunter car",hunterCar)
+  //console.log("hunter car",hunterCar)
 })
 
 onNet('chase:setescapeecar', (localEscapeeCar) => {
@@ -71,11 +71,11 @@ onNet('chase:reset',(passedcar,damage) => {
  
   players.forEach( (player) => {
     if(escapee == player.sid){
-    emitNet('playerrestart',player.sid,localEscapeeCar,damage,5,0)
+    emitNet('playerrestart',player.sid,localEscapeeCar,damage,5)
     message(player.sid,"you are now the escapee!")
     }
     else if(airsupport == player.sid){
-      emitNet('playerrestart',player.sid,'annihilator',damage,5,50)
+      emitNet('playerrestart',player.sid,'volatus',damage,1)
       message(player.sid,"you are now air support!")
       } else{
       emitNet('playerrestart',player.sid,localHunterCar,damage,1)
@@ -95,8 +95,8 @@ onNet('chase:reset',(passedcar,damage) => {
 
   function findPlayerName(id){
     let retVal = "";
-    console.log("id,",id)
-    console.log("players",players)
+    //console.log("id,",id)
+    //console.log("players",players)
     players.forEach( (player)=> {
       if(player.sid == id){
         retVal = player.name;
@@ -108,37 +108,46 @@ onNet('chase:reset',(passedcar,damage) => {
 onNet('chase:initialise',()=> {
     if(!initalised){
     console.log('initialise resource start')
-    
+    //put code here ot intialise when first client connects
     initalised = true;
 }
 
 })
 
 onNet('chase:setairsupport',(playername) => {
-  if(playername == ""){
+  if(playername.toLowerCase() == "off"){
     airsupport = -1;
-    console.log("removing air support");
+    //console.log("removing air support");
 
   }
   players.forEach( (player) => {
     if(player.name.toLowerCase() == playername.toLowerCase()){
       airsupport = player.sid;
-      console.log('setting air support',player.sid)
+      emitNet('airsupport',player.sid,true)
+     //console.log('setting air support',player.sid)
+    } else {
+      emitNet('airsupport',player.sid,false);
     }
   });
-  console.log("Air Support" + playername,airsupport)
+ // console.log("Air Support" + playername,airsupport)
 })
 
 onNet('chase:savecontainers',(data) => {
 SaveResourceFile(GetCurrentResourceName(),"containerData.json",JSON.stringify([...containers,...data]),-1);
-console.log(data);
+//console.log(data);
 });
 
 onNet('chase:setplayers',(args) => {
   
   const serverid = args[0];
-
+  console.log(serverid);
+  const p = GetPlayerFromIndex(serverid);
   const playername = GetPlayerName(serverid);
+  const blip = AddBlipForEntity(serverid);
+  SetBlipSprite(blip,429);
+  //SetBlipAsShortRange(blip,true);
+  //SetBlipColour(blip,1);
+
   emitNet('playerindex',serverid,players.length)
   players.push({index: players.length, sid: serverid, name: playername})
   
@@ -153,7 +162,7 @@ onNet('chase:escapee',(playername) => {
       console.log('setting escapee',player.sid)
     }
   });
-  console.log("escapee " + playername,escapee)
+  //console.log("escapee " + playername,escapee)
 })
 
 
@@ -203,3 +212,9 @@ function resetTimer(){
 onNet("CEventDataResponsePlayerDeath", (name, args) => {
   console.log(`Game event ${name} ${args.join(', ')}`)
 });
+
+onNet("entityCreated", (handle) => {
+  //console.log(handle);
+  //AddBlipForEntity(handle);
+
+})

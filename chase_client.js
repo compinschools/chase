@@ -23,8 +23,9 @@ const spawnPos = [
 
 ];
 var defaultCar = 'adder';
-const defaultDamage = 1000;
-
+var defaultColor = 1;
+var defaultDamage = 1000;
+var airsupport = false;
 
 var playerVehicle; //if the player has a vehicle already, this is the reference to it
 var playerindex = 0;
@@ -47,82 +48,94 @@ onNet('onClientGameTypeStart', () => {
   exports.spawnmanager.setAutoSpawnCallback(() => {
     
     
-   exports.spawnmanager.spawnPlayer({
-      x: spawnPos[playerindex].x,
-      y: spawnPos[playerindex].y,
-      z: spawnPos[playerindex].z,
-      //model: 'a_m_m_skater_01'
-    }, () => {
+   exports.spawnmanager.spawnPlayer(airsupport ?
+    {
+    
+    x: 892.10,
+    y: -28.704, 
+    z: 78.517,
+    //model: 'a_m_m_skater_01'
+  }: 
+  {
+    
+    x: spawnPos[playerindex].x,
+    y: spawnPos[playerindex].y, 
+    z: spawnPos[playerindex].z,
+    //model: 'a_m_m_skater_01'
+  }, () => {
       emit('chat:addMessage', {
-        multiline: true,
+        multiline: false,
 
         args: [
           
-          'Welcome to Chase','you are player ' + (playerindex + 1) + "\r\nFor help press F8 and type chasehelp"
+          'Welcome to Chase','you are player ' + (playerindex + 1)
         ]
       })
       SetEntityRotation(PlayerPedId(),0,0,325)
-      Car(null,[defaultCar],null);
-      const blip = AddBlipForEntity(PlayerPedId());
-      SetBlipAsShortRange(blip,true);
-      SetBlipColour(blip,1);
-
+      Car(null,[defaultCar,defaultDamage,defaultColor],null);
+     
     });
 
-    RegisterCommand('resettimer',(source,args,raw) => {
-      TriggerServerEvent('chase:resettimer')
-    })
-    
-    RegisterCommand('reset',(source,args,raw) => {
-      var car = "";
-      var damage = defaultDamage;
-      if(args.length > 0) {
-        car = args[0];
-      }
-      if(args.length > 1){
-        damage = args[1];
-      }
+   
 
-      
-      TriggerServerEvent('chase:reset',car,damage);
-      TriggerServerEvent('chase:resettimer')
-
-    })
-
-    onNet('playerrestart',(car,damage,color,airsupport) => {
-      
-      exports.spawnmanager.spawnPlayer(airsupport ?
-        {
-        
-        x: 892.10,
-        y: -28.704, 
-        z: 78.517,
-        //model: 'a_m_m_skater_01'
-      }: 
-      {
-        
-        x: spawnPos[playerindex].x,
-        y: spawnPos[playerindex].y, 
-        z: spawnPos[playerindex].z,
-        //model: 'a_m_m_skater_01'
-      }
-      , () => {
-        
-        SetEntityRotation(PlayerPedId(),0,0,325)
-
-      defaultCar = car;
-      Car(null,[car,damage,color],null)
-
-    })
-  })
-
-  
 
   });
 
+   exports.spawnmanager.setAutoSpawn(true)
+    exports.spawnmanager.forceRespawn()
 
-  exports.spawnmanager.setAutoSpawn(true)
-  exports.spawnmanager.forceRespawn()
+
+ 
+});
+RegisterCommand('resettimer',(source,args,raw) => {
+  TriggerServerEvent('chase:resettimer')
+})
+
+RegisterCommand('reset',(source,args,raw) => {
+  var car = "";
+  var damage = defaultDamage;
+  if(args.length > 0) {
+    car = args[0];
+  }
+  if(args.length > 1){
+    damage = args[1];
+  }
+
+  
+  TriggerServerEvent('chase:reset',car,damage);
+  TriggerServerEvent('chase:resettimer')
+
+})
+
+onNet('playerrestart',(car,damage,color) => {
+    
+    playerrestart(car,damage,color)  });
+
+
+
+function playerrestart(car,damage,color){
+  console.log("car",car);
+  console.log("damage",damage);
+  console.log("color", color);
+  defaultCar = car;
+  defaultDamage = damage;
+  defaultColor = color;
+  exports.spawnmanager.forceRespawn();
+};
+
+onNet('airsupport',(airsup) => {
+  console.log(airsup)
+  if(airsup != airsupport){
+
+   
+    airsupport = airsup;
+    if(airsupport){
+      playerrestart('volatus',1000,1)
+    }
+   
+  }
+
+
 });
 
 RegisterCommand('escapeecar',(source,args,raw) => {
@@ -168,7 +181,7 @@ RegisterCommand('escapeecar',(source,args,raw) => {
 
   RegisterCommand('airsupport',(source,args,raw) => {
     if(args.length==0) {
-      console.log("usage: airsupport <playername>")
+      console.log("usage: airsupport <playername or off>")
     }
     if(args.length > 0)
     {
@@ -264,7 +277,7 @@ RegisterCommand('getrotation',(source,args,raw)=> {
   }, false);
 
   async function Car(source,args,raw) {
-    console.log("usage: car <model> <damage -4000 to 1000> <color (integer)>")
+    //console.log("usage: car <model> <damage -4000 to 1000> <color (integer)>")
     // account for the argument not being passed
     let model = "adder";
     let damage = defaultDamage;
