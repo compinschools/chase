@@ -2,77 +2,84 @@ Delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 const tospawn = [
    
-      ]
-
-const spawnPos = [
-  {	x:	923.62	,	y:	46.755	,	z:	80.353	}	,
-{	x:	921.45	,	y:	47.995	,	z:	80.353	}	,
-{	x:	919.28	,	y:	49.235	,	z:	80.353	}	,
-{	x:	917.11	,	y:	50.475	,	z:	80.353	}	,
-{	x:	914.94	,	y:	51.715	,	z:	80.353	}	,
-{	x:	912.77	,	y:	52.955	,	z:	80.353	}	,
-{	x:	910.6	,	y:	54.195	,	z:	80.353	}	,
-{	x:	908.43	,	y:	55.435	,	z:	80.353	}	,
-{	x:	906.26	,	y:	56.675	,	z:	80.353	}	,
-{	x:	904.09	,	y:	57.915	,	z:	80.353	}	,
-{	x:	901.92	,	y:	59.155	,	z:	80.353	}	,
-{	x:	899.75	,	y:	60.395	,	z:	80.353	}	,
-{	x:	897.58	,	y:	61.635	,	z:	80.353	}
-  
+      ];
 
 
-];
-var defaultCar = 'adder';
+var spawnx= 0;
+var spawny= 0;
+var spawnz= 0;
+var spawndirection=0;
+const players = Array.from({length: 128}, (_, index) => index + 1);
+var defaultCar = 'dominator';
 var defaultColor = 1;
-var defaultDamage = 1000;
+var defaultDamage = 1;
 var airsupport = false;
-
+var escapee = -1;
 var playerVehicle; //if the player has a vehicle already, this is the reference to it
 var playerindex = 0;
-
+var engineenabled = false;
+var fuel = 100;
 const containers = [];
 
-onNet('playerindex',(index) => {
-  playerindex = index;
-  //console.log("player set to index",playerindex)
+const vars = {
+  engineenabled : false
+}
 
+
+onNet('playerindex',(args) => {
+  //console.log("args",args)
+  playerindex = args.index;
+  spawnx = args.x;
+  spawny = args.y;
+  spawnz = args.z;
+  spawndirection = args.direction;
+  defaultColor=  args.color;
+  Delay(200);
+  //console.log("player set to index",playerindex)
+  exports.spawnmanager.forceRespawn()
 })
+
+RegisterCommand('forcerespawn', (source,args,raw) => {
+  exports.spawnmanager.forceRespawn();
+})
+
+RegisterCommand('changespawn', (source,args,raw) => {
+  playerindex = args[0];
+})
+
+function getServerId(){
+  pi = GetPlayerIndex();
+    sid = GetPlayerServerId(pi)
+    return sid;
+}
 onNet('onClientGameTypeStart', () => {
     TriggerServerEvent("chase:initialise");
-    pi = GetPlayerIndex();
-    sid = GetPlayerServerId(pi)
-    TriggerServerEvent('chase:setplayers',[sid]);
-    
+    const sid = getServerId();
+    TriggerServerEvent('chase:setplayers',sid);
+    RemoveVehiclesFromGeneratorsInArea(842,-200,70,950,50,90);
 
 
   exports.spawnmanager.setAutoSpawnCallback(() => {
+    //console.log(`spawnPos: ${spawnx},${spawny},${spawnz}, `);
     
-    
-   exports.spawnmanager.spawnPlayer(airsupport ?
-    {
-    
-    x: 892.10,
-    y: -28.704, 
-    z: 78.517,
-    //model: 'a_m_m_skater_01'
-  }: 
+   exports.spawnmanager.spawnPlayer(
   {
-    
-    x: spawnPos[playerindex].x,
-    y: spawnPos[playerindex].y, 
-    z: spawnPos[playerindex].z,
-    //model: 'a_m_m_skater_01'
+    x: spawnx, 
+    y: spawny, 
+    z: spawnz,
+    heading: spawndirection 
   }, () => {
+    RemoveVehiclesFromGeneratorsInArea(842,-200,70,950,50,90);
       emit('chat:addMessage', {
         multiline: false,
 
         args: [
           
-          'Welcome to Chase','you are player ' + (playerindex + 1)
+          'Welcome to Chase','you are player ' + (playerindex +1)
         ]
       })
-      SetEntityRotation(PlayerPedId(),0,0,325)
-      Car(null,[defaultCar,defaultDamage,defaultColor],null);
+      //SetEntityRotation(PlayerPedId(),0,0,spawnPos.direction)
+      Car(null,[defaultCar,defaultDamage,defaultColor],null,spawnx,spawny,spawnz,spawndirection);
      
     });
 
@@ -87,13 +94,14 @@ onNet('onClientGameTypeStart', () => {
 
  
 });
+
 RegisterCommand('resettimer',(source,args,raw) => {
-  TriggerServerEvent('chase:resettimer')
+  TriggerServerEvent('chase:resettimer',getServerId())
 })
 
 RegisterCommand('reset',(source,args,raw) => {
   var car = "";
-  var damage = defaultDamage;
+  var damage = -1;
   if(args.length > 0) {
     car = args[0];
   }
@@ -102,41 +110,65 @@ RegisterCommand('reset',(source,args,raw) => {
   }
 
   
-  TriggerServerEvent('chase:reset',car,damage);
-  TriggerServerEvent('chase:resettimer')
+  TriggerServerEvent('chase:reset',getServerId(),car,damage);
+  TriggerServerEvent('chase:resettimer',getServerId())
 
 })
 
-onNet('playerrestart',(car,damage,color) => {
+
+onNet('playerrestart',(args) => {
     
-    playerrestart(car,damage,color)  });
+  
+   playerRestart(
+     args.car,
+    args.x,
+    args.y,
+    args.z,
+    args.direction,
+    args.damage,
+    args.color,
+    args.fuel) ;
+  });
 
+  onNet('addBlips',() => { 
+    
+       
+    });
+    
 
-
-function playerrestart(car,damage,color){
-  console.log("car",car);
-  console.log("damage",damage);
-  console.log("color", color);
-  defaultCar = car;
-  defaultDamage = damage;
-  defaultColor = color;
+function playerRestart (car1,x1,y1,z1,direction1,damage1,color1,fuel1){
+  //console.log("car",car1);
+  //console.log("damage",damage1);
+  //console.log("color", color1);
+  
+  spawnx= x1;
+  spawny = y1;
+  spawnz = z1;
+  spawndirection = direction1;
+  defaultCar = car1;
+  defaultDamage = damage1;
+  defaultColor = color1;
+  fuel = fuel1 || fuel;
   exports.spawnmanager.forceRespawn();
-};
+} 
+
 
 onNet('airsupport',(airsup) => {
-  console.log(airsup)
+  //console.log(airsup)
   if(airsup != airsupport){
 
    
     airsupport = airsup;
-    if(airsupport){
-      playerrestart('volatus',1000,1)
-    }
+    
    
   }
 
 
 });
+
+onNet('chase:setescapee',(serverescapee) => {
+  escapee = serverescapee;
+})
 
 RegisterCommand('escapeecar',(source,args,raw) => {
     if(args.length> 0){
@@ -149,9 +181,9 @@ RegisterCommand('escapeecar',(source,args,raw) => {
       return;
     }
 
-    TriggerServerEvent('chase:setescapeecar',[args[0]]);
+    TriggerServerEvent('chase:setescapeecar',getServerId(),[args[0]]);
     console.log(
-        'Escapee Car Set To ' + args[0]
+        'Trying to set Escapee car to ' + args[0]
      )
     }
   })
@@ -171,11 +203,15 @@ RegisterCommand('escapeecar',(source,args,raw) => {
           )
         return;
       }
-    TriggerServerEvent('chase:sethuntercar',[args[0]]);
+    TriggerServerEvent('chase:sethuntercar',getServerId(),args[0]);
     console.log(
-        'Hunter Car Set To ' + args[0]
+        'Trying to set hunter car to ' + args[0]
      )
     }
+  })
+
+  onNet('playerList',(playerList) => {
+    //console.log("playerList length", playerList.length)
   })
 
 
@@ -185,10 +221,11 @@ RegisterCommand('escapeecar',(source,args,raw) => {
     }
     if(args.length > 0)
     {
-      TriggerServerEvent('chase:setairsupport',args[0]);
+      TriggerServerEvent('chase:setairsupport',getServerId(),args[0]);
 
     }
   })
+  
 function CreateContainer(x,y,z,direction){
    
     const hash = GetHashKey('prop_container_ld_d');
@@ -227,7 +264,7 @@ onNet('servermessage',(message,color) => {
 })
 
 RegisterCommand('savecontainers', (source,args,raw) => {
-  TriggerServerEvent("chase:savecontainers", tospawn);
+  TriggerServerEvent("chase:savecontainers", getServerId(),tospawn);
   console.log("triggered json save of all player container placements")
 
 })
@@ -276,7 +313,7 @@ RegisterCommand('getrotation',(source,args,raw)=> {
     Car(source,args,raw)
   }, false);
 
-  async function Car(source,args,raw) {
+  async function Car(source,args,raw,x=-1,y=-1,z=-1,heading=-1) {
     //console.log("usage: car <model> <damage -4000 to 1000> <color (integer)>")
     // account for the argument not being passed
     let model = "adder";
@@ -294,7 +331,7 @@ RegisterCommand('getrotation',(source,args,raw)=> {
       }
       catch 
       {
-        console.log("usage: car <model> <damage -4000 to 1000> <color (integer)>")
+        console.log("usage: car <model> <damage modifier 1 to 100> <color (integer)>")
     
         return;
       }
@@ -307,7 +344,7 @@ RegisterCommand('getrotation',(source,args,raw)=> {
       }
       catch
       {
-        console.log("usage: car <model> <damage -4000 to 1000> <color (integer)>")
+        console.log("usage: car <model> <damage modifier 1 to 100> <color (integer)>")
         return;
       }
     }
@@ -331,18 +368,32 @@ RegisterCommand('getrotation',(source,args,raw)=> {
     const ped = PlayerPedId();
   
     // Get the coordinates of the player's Ped (their character)
-    const coords = GetEntityCoords(ped);
-  
+    var coords =  [spawnx,spawny,spawnz]; 
+    if(x==-1 && y==-1 && z == -1){
+
+    
+      coords = GetEntityCoords(ped);
+    }
+
+    var direction = spawndirection;
+    if(heading == -1){
+      direction=GetEntityHeading(ped);
+    }
     // Create a vehicle at the player's position
-    const vehicle = CreateVehicle(hash, coords[0], coords[1], coords[2], GetEntityHeading(ped), true, false);
-    SetVehicleBodyHealth(vehicle,damage);
-    SetVehiclePetrolTankHealth(vehicle,damage);
-    SetVehicleEngineHealth(vehicle,damage);
+    const vehicle = CreateVehicle(hash, coords[0], coords[1], coords[2], direction, true, false);
+    //const blip = AddBlipForEntity(vehicle);
+    //SetBlipSprite(blip,429);
+    //SetVehicleBodyHealth(vehicle,damage);
+    //SetVehiclePetrolTankHealth(vehicle,damage);
+    //SetVehicleEngineHealth(vehicle,damage);
+    SetVehicleDamageModifier(vehicle,damage);
     // Set the player into the drivers seat of the vehicle
     SetPedIntoVehicle(ped, vehicle, -1);
     SetVehicleColours(vehicle,color,color);
+    SetVehicleFuelLevel(vehicle,fuel);
     // Allow the game engine to clean up the vehicle and model if needed
     SetEntityAsNoLongerNeeded(vehicle);
+
     SetModelAsNoLongerNeeded(model);
     if(playerVehicle){
       DeleteEntity(playerVehicle);
@@ -353,9 +404,45 @@ RegisterCommand('getrotation',(source,args,raw)=> {
    
   }
 
-  RegisterCommand('escapee', (source,args,raw) => {
-    TriggerServerEvent('chase:escapee',args[0]);
+  onNet('chase:setfuel',level => {
+    fuel = level;
+    SetVehicleFuelLevel(playerVehicle,level);
+  })
 
+  function repair(){
+    SetVehicleEngineHealth(playerVehicle,defaultDamage);
+    SetVehicleBodyHealth(playerVehicle,defaultDamage);
+    SetVehiclePetrolTankHealth(playerVehicle,defaultDamage);
+   
+    SetVehicleFixed(playerVehicle);
+  }
+  RegisterCommand('repair', (source,args,raw) => {
+    TriggerServerEvent('chase:repair',getServerId())
+  }) 
+
+  RegisterCommand('escapee', (source,args,raw) => {
+    TriggerServerEvent('chase:escapee',getServerId(),args[0]);
+
+  })
+
+  RegisterCommand('chaseadmin',(source,args,raw) => {
+    if(args.length == 0) {
+      console.log("usage: chaseadmin <playername>");
+      return
+    }
+
+    TriggerServerEvent('chase:addadmin',getServerId(),args[0]);
+  })
+
+  RegisterCommand('setdamage',(source,args,raw) => {
+    if(args.length == 0) {
+      console.log("usage: setdamage <1 to 100>");
+
+      return
+    }
+
+    TriggerServerEvent('chase:setdamage',getServerId(),parseInt(args[0]));
+    console.log("Setting escapee damage modifier to ", args[0])
   })
 
   RegisterCommand('chasehelp', () => {
@@ -365,8 +452,11 @@ RegisterCommand('getrotation',(source,args,raw)=> {
     console.log("huntercar <model>");
     console.log("airsupport <playername>");
     console.log("escapee <playername>");
-    console.log("reset");
+    console.log("reset <car> <damagemodifier (1 to 100)>");
     console.log("resettimer");
+    console.log("chaseadmin <playername>");
+    console.log("repair");
+    console.log("setdamage <damagemodifier 1 to 100>")
     console.log("");
     console.log("Dev Commands");
     console.log("------------");
@@ -376,7 +466,60 @@ RegisterCommand('getrotation',(source,args,raw)=> {
     console.log("whereami");
     console.log("deletecontainer");
     console.log("spawncontainer");
-    console.log("car <model> <damage -4000 to 1000> <color (integer)>");
+    console.log("car <model> <damagemodifier 1 to 100> <color (integer)>");
     console.log("chasehelp");
 
   });
+
+  function setBlips(){
+    
+    players.forEach(P => {
+      if(NetworkIsPlayerActive(P)){
+       // console.log("active player",P)
+      const ped = GetPlayerPed(P);
+      //console.log(ped);
+      var blip = GetBlipFromEntity(ped);
+        //console.log(blip)
+        if(ped!=0 && !blip){
+          blip = AddBlipForEntity(ped);
+          
+         
+          SetBlipNameToPlayerName(blip,P);
+          SetBlipAsShortRange(blip,true);
+          PulseBlip(blip);
+        }
+        const serverid = GetPlayerServerId(P);
+       // console.log(serverid,escapee)
+        if(serverid == escapee) {
+        SetBlipSprite(blip,429)
+        }
+        else
+        {
+          SetBlipSprite(blip,1)
+        }
+
+
+      }
+     // }
+
+    });
+  }
+
+  setTick( () => {
+     if(IsControlJustPressed(0,27)){
+      TriggerServerEvent('chase:repair',getServerId())
+    } 
+    setBlips();
+
+
+
+
+  });
+
+  onNet('chase:console',text => {
+    console.log(text);
+
+  })
+  onNet('chase:repair',() => {
+    repair();
+  })
