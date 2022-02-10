@@ -8,5 +8,8 @@ version '2.0.0'
 resource_type 'gametype' { name = 'Chase!' }
 
 client_script 'chase_client.js'
+client_script 'repair_client.js'
+client_script 'readytext_client.js'
 client_script 'hud.lua'
 server_script 'chase_server.js'
+
