@@ -20,7 +20,7 @@ function drawTxt(x, y, scale, text, r, g, b, a) {
 }
 
 
-onNet('chase:drawtxt',async (x,y,scale,text,r,g,b,a) =>{
+onNet('chase:drawtxt',async (x,y,scale,text,r,g,b,a,duration=5000) =>{
   
     messages.push({
       x:x,
@@ -28,7 +28,8 @@ onNet('chase:drawtxt',async (x,y,scale,text,r,g,b,a) =>{
       scale:scale,
       text:text,
       r:r,g:g,b:b,a:a,
-      time: Date.now()
+      time: Date.now(),
+      duration: duration
     })
     
   });
@@ -69,7 +70,7 @@ setTick(() => {
     }
 
     messages.forEach((message) => {
-        if(Date.now() - message.time < 5000){
+        if(Date.now() - message.time < message.duration){
         drawTxt(
           message.x,
           message.y,

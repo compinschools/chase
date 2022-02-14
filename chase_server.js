@@ -1,3 +1,5 @@
+const { triggerAsyncId } = require("async_hooks");
+
 var initalised = false;
 Delay = (ms) => new Promise(res => setTimeout(res, ms));
 
@@ -177,6 +179,8 @@ const hunterSpawns = [{
 
 ]
 
+const scoreboard = [];
+
 var containers = [];
 var permissions = [];
 var lastEscapee = -1;
@@ -192,6 +196,15 @@ var go = false;
 var airsupport = -1;
 var previous = Date.now();
 var defaultDamage = 1;
+
+function IsPlayerActive(serverid){
+  const ped = GetPlayerPed(serverid);
+  if(ped){
+    return true;
+  }
+  return false;
+
+}
 
 function CheckPermissions(serverid, role = "admin") {
   const playerguid = GetPlayerIdentifier(serverid, 0);
@@ -214,6 +227,8 @@ function CheckPermissions(serverid, role = "admin") {
   }
   return retVal;
 }
+
+//const dummyPlayers = Array(255).fill(0).map ( (_,i) => i+1 );
 const players = [];
 
 function CreateContainer(x, y, z, direction) {
@@ -276,9 +291,33 @@ onNet('chase:setescapeecar', (source, localEscapeeCar) => {
   }
 })
 
+function endRun(addToScoreboard,messagePlayers){
+  const lastRun = Date.now() - startTime;
+  const minutes = Math.floor(lastRun / 60000);
+  const seconds = Math.floor((lastRun - (minutes * 60000)) / 1000);
+  const lastPlayerName = findPlayerName(lastEscapee);
+  
+
+  if(messagePlayers){
+  emitNet('chase:drawtxt',-1, 
+  0.5,
+  0.4,
+  1,
+  `Timer Reset, last run was: ${minutes}m ${seconds}s, well done ${lastPlayerName}`,
+  255,
+  255,
+  255,
+  255,
+  5000
+  );
+  }
+}
+
 onNet('chase:reset', (source, passedcar, damage) => {
 
   if (CheckPermissions(source, "admin")) {
+
+    endRun(true,true);
     //console.log("players",players)
     let localHunterCar = hunterCar;
     let localEscapeeCar = escapeeCar;
@@ -290,6 +329,7 @@ onNet('chase:reset', (source, passedcar, damage) => {
     }
 
     players.forEach((player) => {
+      if(!IsPlayerActive(player.sid)) return;
       if (escapee == player.sid) {
         emitNet('playerrestart',
           player.sid, {
@@ -340,12 +380,7 @@ onNet('chase:reset', (source, passedcar, damage) => {
 
     });
 
-    const lastRun = Date.now() - startTime;
-    const minutes = Math.floor(lastRun / 60000);
-    const seconds = Math.floor((lastRun - (minutes * 60000)) / 1000);
-    const lastPlayerName = findPlayerName(lastEscapee);
-    message(-1, `Timer Reset, last run was: ${minutes}m ${seconds}s, well done ${lastPlayerName}`);
-
+    
     startTime = Date.now();
 
   }
@@ -357,6 +392,7 @@ function findPlayerName(id) {
   //console.log("id,",id)
   //console.log("players",players)
   players.forEach((player) => {
+    if(!IsPlayerActive(player.sid)) return;
     if (player.sid == id) {
       retVal = player.name;
     }
@@ -449,6 +485,7 @@ onNet('chase:escapee', (source, playername) => {
       escapee = player.sid;
     }
     players.forEach((player) => {
+      if(!IsPlayerActive(player.sid)) return;
       if (player.name.toLowerCase() == playername.toLowerCase()) {
         lastEscapee = (escapee == -1 ? player.sid : escapee);
         escapee = player.sid;
@@ -512,6 +549,7 @@ setTick(() => {
   if (hunterdifference > 1000 && hunterdifference < 2001) {
   
     players.forEach( (p) => {
+      if(!IsPlayerActive(p.sid)) return;
       if(p.sid != escapee){
     emitNet('chase:stage',p.sid,"onyourmarks");
       }})
@@ -519,15 +557,18 @@ setTick(() => {
   }
 
   if (hunterdifference > 000 && hunterdifference < 1001) {
+    
     players.forEach( (p) => {
+      if(!IsPlayerActive(p.sid)) return;
       if(p.sid != escapee){
-    emitNet('chase:stage',-1,"getset");
+    emitNet('chase:stage',p.sid,"getset");
       }})
     return;
   }
 
   if (hunterdifference > -1000 && hunterdifference < 1) {
     players.forEach( (p) => {
+      if(!IsPlayerActive(p.sid)) return;
       if(p.sid != escapee){
       emitNet('chase:stage',p.sid,"go");
     emitNet('chase:setfuel', p.sid, 1000);
@@ -539,40 +580,43 @@ setTick(() => {
     
     return;
   }
+  RSGEscapee(startTime,currentTime);
 
+ 
+});
+
+function RSGEscapee(startTime,currentTime){
+  if(escapee == -1) return;
 
   const setescapeeOffTime = startTime + (escapeedelay * 1000);
   const escapeedifference = setescapeeOffTime - currentTime;
 
+
   if (escapeedifference > 1000 && escapeedifference < 2001) {
-    players.forEach( (p) => {
-      if(p.sid == escapee){
-    emitNet('chase:stage',p.sid,"onyourmarks");
-      }})
+   
+    emitNet('chase:stage',escapee,"onyourmarks");
+     
     return;
   }
 
   if (escapeedifference > 000 && escapeedifference < 1001) {
    
-    players.forEach( (p) => {
-      if(p.sid == escapee){
-    emitNet('chase:stage',-1,"getset");
-      }})
+    
+    emitNet('chase:stage',escapee,"getset");
+     
     return;
   }
 
   if (escapeedifference > -1000 && escapeedifference < 1) {
   
-    players.forEach( (p) => {
-      if(p.sid == escapee){
-      emitNet('chase:stage',p.sid,"go");
-    emitNet('chase:setfuel', p.sid, 1000);
-      }
-    })
+    
+      emitNet('chase:stage',escapee,"go");
+    emitNet('chase:setfuel', escapee, 1000);
+     
     
     return;
   }
-});
+}
 
 onNet('chase:resettimer', (source) => {
   if (CheckPermissions(source, "admin")) {
@@ -584,6 +628,7 @@ onNet('chase:addadmin', (source, playername) => {
   if (CheckPermissions(source)) {
     var playerid = "";
     players.forEach((player) => {
+      if(!IsPlayerActive(player.sid)) return;
       if (playername.toLowerCase() == p.name.toLowerCase()) {
         playerid = player.identifier;
       }
@@ -600,7 +645,6 @@ onNet('chase:addadmin', (source, playername) => {
 function resetTimer() {
 
   startTime = Date.now();
-  onYourMarks = getSet = go = false;
   emitNet('chase:drawtxt',-1, 
     0.5,
     0.5,
@@ -609,19 +653,17 @@ function resetTimer() {
     255,
     255,
     255,
-    255
+    255,
+    5000
     );
 
+   
 
 }
 
 function playerConsoleText(source, text) {
   emitNet('chase:console', source, text);
 }
-
-onNet("CEventDataResponsePlayerDeath", (name, args) => {
-  console.log(`Game event ${name} ${args.join(', ')}`)
-});
 
 onNet('chase:repair', (source) => {
   if (escapee != source) {
