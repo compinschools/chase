@@ -204,6 +204,16 @@ RegisterCommand('stoprecord', () => {
   StopRecordingAndSaveClip();
 })
 
+on('chase:startrecord', () => {
+  StartRecording(1);
+}
+);
+
+on('chase:stoprecord', () => {
+  StopRecordingAndSaveClip();
+}
+);
+
 onNet('chase:setescapee', (serverescapee) => {
   escapee = serverescapee;
 })
@@ -528,15 +538,8 @@ function setBlips() {
 }
 
 setTick(() => {
-  if (IsControlJustPressed(0, 27)) {
-    TriggerServerEvent('chase:repair', getServerId())
-  }
-
    
   setBlips();
-
-
-
 
 });
 
@@ -544,6 +547,13 @@ onNet('chase:console', text => {
   console.log(text);
 
 })
+on('chase:localrepair', () => {
+ // console.log("caught chase repair")
+  TriggerServerEvent('chase:repair',getServerId());
+  
+})
+
 onNet('chase:repair', () => {
   repair();
 })
+
