@@ -46,7 +46,14 @@ Citizen.CreateThread(function()
 
 				Speed = GetEntitySpeed(GetVehiclePedIsIn(GetPlayerPed(-1), false)) * 2.236936
 
-				drawRct(UI.x + 0.11, 	UI.y + 0.932, 0.12,0.03,0,0,0,150) -- Speed panel
+				drawRct(UI.x + 0.11, 	UI.y + 0.882, 0.12,0.08,0,0,0,150) -- Speed panel
+				local hours = GetClockHours();
+				local minutes = GetClockMinutes();
+				if(minutes < 10) then
+					minutes = "0" .. minutes
+				end
+				drawTxt(UI.x + 0.61, 	UI.y + 1.37, 1.0,1.0,0.64 , "~w~" .. hours .. ":" .. minutes, 255, 255, 255, 255)
+
 			   drawTxt(UI.x + 0.61, 	UI.y + 1.42, 1.0,1.0,0.64 , "~w~" .. math.ceil(Speed), 255, 255, 255, 255)
 				drawTxt(UI.x + 0.633, 	UI.y + 1.432, 1.0,1.0,0.4, "~w~ mph", 255, 255, 255, 255)
 			

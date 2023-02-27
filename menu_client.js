@@ -72,7 +72,7 @@ RegisterNuiCallbackType('reset') // register the type
 // register a magic event name
 on('__cfx_nui:reset', (data, cb) => {
   TriggerServerEvent('chase:reset', getServerId(), "", -1);
-  TriggerServerEvent('chase:resettimer', getServerId())
+  //TriggerServerEvent('chase:starttimer', getServerId())
 
   cb({
     message: 'ok'
@@ -84,19 +84,19 @@ on('__cfx_nui:reset', (data, cb) => {
 
 on('chase:reset', () => {
   TriggerServerEvent('chase:reset', getServerId(), "", -1);
-  TriggerServerEvent('chase:resettimer', getServerId())
+  //TriggerServerEvent('chase:starttimer', getServerId())
 
   return;
 
   // cb(itemCache[itemId]);
 });
 
-RegisterNuiCallbackType('resettimer') // register the type
+RegisterNuiCallbackType('stoptimer') // register the type
 
 // register a magic event name
-on('__cfx_nui:resettimer', (data, cb) => {
+on('__cfx_nui:stoptimer', (data, cb) => {
 
-  TriggerServerEvent('chase:resettimer', getServerId())
+  TriggerServerEvent('chase:stoptimer', getServerId())
   cb({
     message: 'ok'
   })
@@ -107,9 +107,35 @@ on('__cfx_nui:resettimer', (data, cb) => {
   // cb(itemCache[itemId]);
 });
 
-on('chase:resettimer', () => {
+on('chase:stoptimer', () => {
 
-  TriggerServerEvent('chase:resettimer', getServerId())
+  TriggerServerEvent('chase:stoptimer', getServerId())
+  return;
+
+
+
+  // cb(itemCache[itemId]);
+});
+
+RegisterNuiCallbackType('starttimer') // register the type
+
+// register a magic event name
+on('__cfx_nui:starttimer', (data, cb) => {
+
+  TriggerServerEvent('chase:starttimer', getServerId())
+  cb({
+    message: 'ok'
+  })
+  return;
+
+
+
+  // cb(itemCache[itemId]);
+});
+
+on('chase:starttimer', () => {
+
+  TriggerServerEvent('chase:starttimer', getServerId())
   return;
 
 
@@ -141,6 +167,38 @@ on('__cfx_nui:recordstop', (data, cb) => {
 
 
   return
+
+  // cb(itemCache[itemId]);
+});
+
+
+
+
+
+
+RegisterNuiCallbackType('scoreboard') // register the type
+
+// register a magic event name
+on('__cfx_nui:scoreboard', (data, cb) => {
+
+  TriggerServerEvent('chase:scoreboard', getServerId())
+  cb({
+    message: 'ok'
+  })
+  return;
+
+
+
+  // cb(itemCache[itemId]);
+});
+
+on('chase:scoreboard', () => {
+
+  TriggerServerEvent('chase:scoreboard', getServerId())
+  
+  return;
+
+
 
   // cb(itemCache[itemId]);
 });

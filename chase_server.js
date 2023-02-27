@@ -1,205 +1,40 @@
-const { triggerAsyncId } = require("async_hooks");
+const {
+  triggerAsyncId
+} = require("async_hooks");
+const { spawn } = require("child_process");
 
 var initalised = false;
 Delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-const airSupportSpawn = {
-  x: 892.10,
-  y: -28.704,
-  z: 78.517,
-  direction: 325
-}
+let spawns = [];
 
-const escapeeSpawn = {
-  x: 872.2961,
-  y: -33.75466,
-  z: 78.25092,
-  direction: 325 - 90 - 180
-}
+let airSupportSpawn ={}
 
-const hunterSpawns = [{
-    x: 871.0931,
-    y: -8.027414,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 869.2922,
-    y: -10.85556,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 867.3961,
-    y: -13.83304,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 865.4691,
-    y: -16.8592,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 863.5977,
-    y: -19.79782,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 861.6579,
-    y: -22.84399,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 859.8667,
-    y: -25.65676,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 857.9991,
-    y: -28.58957,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 856.077,
-    y: -31.60794,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 854.2204,
-    y: -34.52335,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 852.343,
-    y: -37.47161,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 850.6003,
-    y: -40.2081,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 848.5654,
-    y: -43.40371,
-    z: 78.25092,
-    direction: 325 - 90
-  },
-  {
-    x: 900.4053,
-    y: -26.79921,
-    z: 78.25092,
-    direction: 325 - 90
-  }, //test
-  {
-    x: 898.4274,
-    y: -30.02213,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 896.6921,
-    y: -32.84973,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 894.9279,
-    y: -35.72458,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 893.1837,
-    y: -38.56657,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 891.3335,
-    y: -41.58147,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 889.4479,
-    y: -44.654,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 887.7943,
-    y: -47.34845,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 885.9185,
-    y: -50.40506,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 884.0901,
-    y: -53.38437,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 882.3299,
-    y: -56.25257,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 880.5823,
-    y: -59.10026,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
-  {
-    x: 878.7366,
-    y: -62.10781,
-    z: 78.25092,
-    direction: 325 - 90 - 180
-  },
+let escapeeSpawn = {};
 
-
-
-
-]
+let hunterSpawns = [];
 
 const scoreboard = [];
 
 var containers = [];
 var permissions = [];
-var lastEscapee = -1;
+var cameras = [];
 var escapee = -1;
 var escapeeCar = "dominator"
 var hunterCar = "dominator"
 var escapeedelay = 10; // in seconds
 var hunterdelay = 20; // in seconds
-var startTime = Date.now();
+var startTime = new Date(1970, 1, 1);
 var onYourMarks = false;
 var getSet = false;
 var go = false;
 var airsupport = -1;
 var previous = Date.now();
-var defaultDamage = 1;
+var defaultDamage = 4;
 
-function IsPlayerActive(serverid){
+function IsPlayerActive(serverid) {
   const ped = GetPlayerPed(serverid);
-  if(ped){
+  if (ped) {
     return true;
   }
   return false;
@@ -253,6 +88,23 @@ function CreateContainer(x, y, z, direction) {
 
   return container;
 }
+onNet('chase:setspawn',(serverid,location) => {
+  try
+  {
+    spawns.forEach( (sp) => {
+      if(sp.name.toLowerCase() == location.toLowerCase()){
+        escapeeSpawn = sp.escapee;
+        hunterSpawns = sp.hunter;
+        airSupportSpawn = sp.airsupport;
+        playerConsoleText(serverid,"Location set to " + sp.name);
+       
+      }
+    })
+  }
+  catch(err){
+    playerConsoleText(serverid,"error:" + err);
+  }
+});
 
 onNet('chase:setdamage', (source, clientdamage) => {
   if (CheckPermissions(source, "admin")) {
@@ -265,9 +117,20 @@ onNet('chase:setdamage', (source, clientdamage) => {
 onNet('onServerResourceStart', (resource) => {
   // console.log("resource started: ",resource);
   if (resource == "chase") {
+    //RemoveVehiclesFromGeneratorsInArea(842, -200, 70, 950, 50, 90);
     containers = JSON.parse(LoadResourceFile(GetCurrentResourceName(), "containerData.json"))
     permissions = JSON.parse(LoadResourceFile(GetCurrentResourceName(), "permissions.json"))
-
+    spawns = JSON.parse(LoadResourceFile(GetCurrentResourceName(),"spawnLocations.json"))
+    cameras = JSON.parse(LoadResourceFile(GetCurrentResourceName(),"cameras.json"))
+    escapeeSpawn = spawns[0].escapee;
+    hunterSpawns = spawns[0].hunter;
+    airSupportSpawn = spawns[0].airsupport;
+    /* SaveResourceFile(GetCurrentResourceName(),"spawnLocations.json",JSON.stringify([{
+      name: "casino",
+      escapee: escapeeSpawn,
+      airsupport: airSupportSpawn,
+      hunter: hunterSpawns
+    }])) */
     //RemoveVehiclesFromGeneratorsInArea(842,-200,70,950,50,90);
     containers.map((c) => {
       CreateContainer(c.x, c.y, c.z, c.direction);
@@ -291,33 +154,130 @@ onNet('chase:setescapeecar', (source, localEscapeeCar) => {
   }
 })
 
-function endRun(addToScoreboard,messagePlayers){
-  const lastRun = Date.now() - startTime;
-  const minutes = Math.floor(lastRun / 60000);
-  const seconds = Math.floor((lastRun - (minutes * 60000)) / 1000);
-  const lastPlayerName = findPlayerName(lastEscapee);
-  
+onNet("chase:scoreboard",(serverid) => {
+  clientscoreboard(serverid);
+})
 
-  if(messagePlayers){
-  emitNet('chase:drawtxt',-1, 
+function clientscoreboard(serverid=-1){
+  
+  const percolumn = 20;
+
+
+  emitNet('chase:drawtxt', serverid,
   0.5,
-  0.4,
-  1,
-  `Timer Reset, last run was: ${minutes}m ${seconds}s, well done ${lastPlayerName}`,
+  0.05,
+  0.7,
+  "Scoreboard",
   255,
-  255,
+  0,
   255,
   255,
   5000
-  );
+);    
+
+  scoreboard.forEach( (score,index) => {
+    let txt = score.name + " " + score.score + "\n";
+
+
+      emitNet('chase:drawtxt', serverid,
+      0.15 + ( Math.floor( (index) / percolumn) * 0.1),
+      0.1 + ((index % percolumn) * 0.04),
+      0.5,
+      txt,
+      255,
+      255,
+      255,
+      255,
+      5000
+    );    
+   
+
+  })
+  
+}
+
+function endRun(addToScoreboard, messagePlayers) {
+  const lastRun = Date.now() - startTime;
+  const minutes = Math.floor(lastRun / 60000);
+  const seconds = Math.floor((lastRun - (minutes * 60000)) / 1000);
+  const lastPlayerName = findPlayerName(escapee);
+
+  if(addToScoreboard){
+    scoreboard.push({
+      name: lastPlayerName,
+      score: `${minutes}m ${seconds}s`
+    })
+    
+  }
+
+  if (messagePlayers) {
+    emitNet('chase:drawtxt', -1,
+      0.5,
+      0.4,
+      1,
+      `Timer Reset, last run was: ${minutes}m ${seconds}s, well done ${lastPlayerName}`,
+      255,
+      255,
+      255,
+      255,
+      5000
+    );
   }
 }
+
+onNet('chase:deletevehicles',()=> {
+  const vehicles = EnumerateVehicles();
+  vehicles.forEach( (v) => {
+    if(!IsPedAPlayer(GetPedInVehicleSeat(v,-1))){
+      SetVehicleHasBeenOwnedByPlayer(v, false) 
+      SetEntityAsMissionEntity(v, false, false) 
+      DeleteVehicle(v)
+      if (DoesEntityExist(v)) DeleteVehicle(v) 
+    }
+  })
+
+});
+
+function EnumerateVehicles(){
+
+  const ids = [];
+  let [iter,id]=  FindFirstVehicle()
+
+ // console.log(iter);
+  //console.log(id);
+  if(!id){
+    return;
+  }
+  ids.push(id);
+  
+  let next = 0
+    do{
+      
+      [next, id] = FindNextVehicle(iter)
+      //console.log("next",next);
+      //console.log("id",id);
+      if(id != -1){
+        ids.push(id);
+      }
+      }while(next);
+
+    EndFindVehicle(iter)
+    return ids;
+}
+
+onNet("chase:changespawn",(serverid,index) => {
+  players.forEach( (p) => {
+    if(p.sid ==serverid) p.index = index;
+  })
+  playerConsoleText(serverid,"Changed player index to " + index)
+
+})
 
 onNet('chase:reset', (source, passedcar, damage) => {
 
   if (CheckPermissions(source, "admin")) {
 
-    endRun(true,true);
+    //endRun(true,true);
     //console.log("players",players)
     let localHunterCar = hunterCar;
     let localEscapeeCar = escapeeCar;
@@ -329,7 +289,7 @@ onNet('chase:reset', (source, passedcar, damage) => {
     }
 
     players.forEach((player) => {
-      if(!IsPlayerActive(player.sid)) return;
+      if (!IsPlayerActive(player.sid)) return;
       if (escapee == player.sid) {
         emitNet('playerrestart',
           player.sid, {
@@ -342,7 +302,7 @@ onNet('chase:reset', (source, passedcar, damage) => {
             color: 5,
             fuel: 0
           }
-         
+
         )
         emitNet('chase:setfuel', player.sid, 0);
         message(player.sid, "you are now the escapee!")
@@ -380,9 +340,6 @@ onNet('chase:reset', (source, passedcar, damage) => {
 
     });
 
-    
-    startTime = Date.now();
-
   }
 
 });
@@ -392,7 +349,7 @@ function findPlayerName(id) {
   //console.log("id,",id)
   //console.log("players",players)
   players.forEach((player) => {
-    if(!IsPlayerActive(player.sid)) return;
+    if (!IsPlayerActive(player.sid)) return;
     if (player.sid == id) {
       retVal = player.name;
     }
@@ -448,6 +405,18 @@ onNet('chase:savecontainers', (source, data) => {
   }
 });
 
+onNet('chase:savescoreboard', (source, data) => {
+  if (CheckPermissions(source, "admin")) {
+    SaveResourceFile(GetCurrentResourceName(),`Scoreboard-${Date.now()}.json`, JSON.stringify(scoreboard), -1);
+    playerConsoleText(source,"file saved, check the chase folder")
+    //console.log(data);
+  }
+});
+
+onNet('chase:removecars', () => {
+  emitNet('chase:localremovecars',-1,spawns);
+})
+
 onNet('chase:setplayers', (serverid) => {
 
   //console.log("set players serverid",serverid);
@@ -481,13 +450,13 @@ onNet('chase:setplayers', (serverid) => {
 onNet('chase:escapee', (source, playername) => {
   if (CheckPermissions(source, "admin")) {
     if (playername == "off") {
-      lastEscapee = (escapee == -1 ? player.sid : escapee);
-      escapee = player.sid;
+
+      escapee = -1;
     }
     players.forEach((player) => {
-      if(!IsPlayerActive(player.sid)) return;
+      if (!IsPlayerActive(player.sid)) return;
       if (player.name.toLowerCase() == playername.toLowerCase()) {
-        lastEscapee = (escapee == -1 ? player.sid : escapee);
+
         escapee = player.sid;
         if (airsupport == player.sid) {
           airsupport = -1;
@@ -515,14 +484,14 @@ onNet('chase:escapee', (source, playername) => {
   }
 })
 
-onNet('chase:escapeedelay',(source,delay) => {
-  if(CheckPermissions(source,'admin')){
+onNet('chase:escapeedelay', (source, delay) => {
+  if (CheckPermissions(source, 'admin')) {
     escapeedelay = delay;
   }
 });
 
-onNet('chase:hunterdelay',(source,delay) => {
-  if(CheckPermissions(source,'admin')){
+onNet('chase:hunterdelay', (source, delay) => {
+  if (CheckPermissions(source, 'admin')) {
     hunterdelay = delay;
   }
 });
@@ -542,85 +511,107 @@ setTick(() => {
   //console.log("I'm running every frame/tick!");
   const currentTime = Date.now();
 
+  RSGHunter(startTime, currentTime);
+  RSGEscapee(startTime, currentTime);
+
+
+});
+
+function RSGHunter(startTime, currentTime) {
   const sethunterOffTime = startTime + (hunterdelay * 1000);
   const hunterdifference = sethunterOffTime - currentTime;
 
   //console.log(difference);
   if (hunterdifference > 1000 && hunterdifference < 2001) {
-  
-    players.forEach( (p) => {
-      if(!IsPlayerActive(p.sid)) return;
-      if(p.sid != escapee){
-    emitNet('chase:stage',p.sid,"onyourmarks");
-      }})
+
+    players.forEach((p) => {
+      if (!IsPlayerActive(p.sid)) return;
+      if (p.sid != escapee) {
+        emitNet('chase:stage', p.sid, "onyourmarks");
+      }
+    })
     return;
   }
 
   if (hunterdifference > 000 && hunterdifference < 1001) {
-    
-    players.forEach( (p) => {
-      if(!IsPlayerActive(p.sid)) return;
-      if(p.sid != escapee){
-    emitNet('chase:stage',p.sid,"getset");
-      }})
+
+    players.forEach((p) => {
+      if (!IsPlayerActive(p.sid)) return;
+      if (p.sid != escapee) {
+        emitNet('chase:stage', p.sid, "getset");
+      }
+    })
     return;
   }
 
   if (hunterdifference > -1000 && hunterdifference < 1) {
-    players.forEach( (p) => {
-      if(!IsPlayerActive(p.sid)) return;
-      if(p.sid != escapee){
-      emitNet('chase:stage',p.sid,"go");
-    emitNet('chase:setfuel', p.sid, 1000);
-      } else
-      {
-        emitNet('chase:stage',p.sid,"huntergo")
+    players.forEach((p) => {
+      if (!IsPlayerActive(p.sid)) return;
+      if (p.sid != escapee) {
+        emitNet('chase:stage', p.sid, "go");
+        emitNet('chase:setfuel', p.sid, 1000);
+      } else {
+        emitNet('chase:stage', p.sid, "huntergo")
       }
     })
-    
+
     return;
   }
-  RSGEscapee(startTime,currentTime);
+}
 
- 
-});
-
-function RSGEscapee(startTime,currentTime){
-  if(escapee == -1) return;
+function RSGEscapee(startTime, currentTime) {
+  if (escapee == -1) return;
 
   const setescapeeOffTime = startTime + (escapeedelay * 1000);
   const escapeedifference = setescapeeOffTime - currentTime;
 
 
   if (escapeedifference > 1000 && escapeedifference < 2001) {
-   
-    emitNet('chase:stage',escapee,"onyourmarks");
-     
+
+    emitNet('chase:stage', escapee, "onyourmarks");
+    // console.log("Escapee on your marks")
     return;
   }
 
   if (escapeedifference > 000 && escapeedifference < 1001) {
-   
-    
-    emitNet('chase:stage',escapee,"getset");
-     
+
+
+    emitNet('chase:stage', escapee, "getset");
+    //console.log("Escapee get set") 
     return;
   }
 
   if (escapeedifference > -1000 && escapeedifference < 1) {
-  
-    
-      emitNet('chase:stage',escapee,"go");
+
+
+    emitNet('chase:stage', escapee, "go");
     emitNet('chase:setfuel', escapee, 1000);
-     
-    
+    // console.log("Escapee go")
+
     return;
   }
 }
 
-onNet('chase:resettimer', (source) => {
+onNet('chase:starttimer', (source) => {
   if (CheckPermissions(source, "admin")) {
-    resetTimer();
+    starttimer();
+  }
+})
+
+onNet('chase:addcam', (source, playername) => {
+  if (CheckPermissions(source)) {
+    var playerid = "";
+    players.forEach((player) => {
+      if (!IsPlayerActive(player.sid)) return;
+      if (playername.toLowerCase() == player.name.toLowerCase()) {
+        playerid = player.identifier;
+      }
+    })
+    cameras.push({
+      playername: playername,
+      identifier: playerid
+    });
+    SaveResourceFile(GetCurrentResourceName(), "cameras.json", JSON.stringify(cameras), -1);
   }
 })
 
@@ -628,7 +619,7 @@ onNet('chase:addadmin', (source, playername) => {
   if (CheckPermissions(source)) {
     var playerid = "";
     players.forEach((player) => {
-      if(!IsPlayerActive(player.sid)) return;
+      if (!IsPlayerActive(player.sid)) return;
       if (playername.toLowerCase() == p.name.toLowerCase()) {
         playerid = player.identifier;
       }
@@ -642,24 +633,51 @@ onNet('chase:addadmin', (source, playername) => {
   }
 })
 
-function resetTimer() {
+
+
+onNet('chase:stoptimer', (serverid) => {
+  endRun(true, true);
+  startTime = new Date(1970, 1, 1);
+});
+
+function starttimer() {
 
   startTime = Date.now();
-  emitNet('chase:drawtxt',-1, 
+  emitNet('chase:drawtxt', -1,
     0.5,
     0.5,
     1,
-    `Timer Started! Escapee sets off in ${escapeedelay} second and the hunter ${hunterdelay-escapeedelay} seconds after!`,
+    `Timer Started! Escapee sets off in ${escapeedelay} second${escapeedelay > 1 && "s"} and the hunter ${hunterdelay-escapeedelay} second${hunterdelay-escapeedelay > 1 && "s"} after!`,
     255,
     255,
     255,
     255,
     5000
-    );
-
+  );
+ /*
+  players.forEach((player) => {
+    if (!IsPlayerActive(player.sid)) return;
+    
+    cameras.forEach( (c) => {
+      if(player.identifier == c.identifier){
+        emitNet('chase:startrecord',player.sid);
+      }
+    })
    
+  });
+ */
+
+
 
 }
+
+onNet('chase:setnumberplate',(sourceid) => {
+  const ped = GetPlayerPed(sourceid)
+  const v = GetVehiclePedIsIn(ped,true)
+  SetVehicleNumberPlateText(v,"");  
+
+
+})
 
 function playerConsoleText(source, text) {
   emitNet('chase:console', source, text);
